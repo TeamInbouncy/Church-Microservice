@@ -103,11 +103,11 @@ async function fetchGroupsByGroupType({
 
   applyPassthroughParams(url, passthroughParams);
 
-  const params = normalizePagination({
-    perPageRaw: url.searchParams.get("per_page"),
-    offsetRaw: url.searchParams.get("offset"),
-    page,
-  });
+const params = normalizePagination({
+  perPageRaw: url.searchParams.get('per_page'),
+  offsetRaw: url.searchParams.get('offset'),
+  page,
+});
 
   if (params.perPage !== undefined) {
     ensureSearchParam(url, "per_page", String(params.perPage));
@@ -182,20 +182,21 @@ async function fetchAllGroups({ page, passthroughParams = [] }) {
     page,
   });
 
-  if (params.perPage !== undefined) {
-    ensureSearchParam(url, 'per_page', String(params.perPage));
-  }
+  const requestedPerPage = params.perPage || 6;
 
-  if (params.offset !== undefined) {
-    ensureSearchParam(url, 'offset', String(params.offset));
-  }
+
+const finalPerPage = requestedPerPage * 2;
+const finalOffset = params.offset || 0;
+
+    ensureSearchParam(url, 'per_page', String(finalPerPage));
+  ensureSearchParam(url, 'offset', String(finalOffset));
 
   logRequest({
     groupTypeId: 'all',
     endpoint: 'all-groups',
     page: params.page,
-    perPage: params.perPage,
-    offset: params.offset,
+    perPage: finalPerPage,  // ✅ Use finalPerPage
+    offset: finalOffset,    // ✅ Use finalOffset
     url,
   });
 
@@ -247,15 +248,27 @@ for (const group of groups) {
   }
 }
 
-  return {
-    page: params.page,
-    offset: params.offset,
-    pageSize: params.perPage,
-    groups: filteredGroups,
-    links: payload?.links ?? {},
-    nextExist: Boolean(payload?.links?.next),
-    includes: payload?.included ?? [],
-  };
+
+
+
+const groupsToReturn = filteredGroups.slice(0, requestedPerPage);
+
+console.log('📊 Pagination Debug:');
+console.log('  Fetched from PC:', groups.length);
+console.log('  After filtering:', filteredGroups.length);
+console.log('  Requested per_page:', requestedPerPage);
+console.log('  Returning:', groupsToReturn.length);  // ✅ Now it's defined
+console.log('  Offset:', finalOffset);
+
+return {
+  page: params.page,
+  offset: finalOffset,
+  pageSize: requestedPerPage,  // ✅ Use requestedPerPage
+  groups: groupsToReturn,  // ✅ Use groupsToReturn
+  links: payload?.links ?? {},
+  nextExist: filteredGroups.length > requestedPerPage || Boolean(payload?.links?.next),
+  includes: payload?.included ?? [],
+};
 }
 
 
