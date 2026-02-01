@@ -171,6 +171,9 @@ async function fetchAllGroups({ page, passthroughParams = [] }) {
   // archived_at=null by default
   url.searchParams.set('archived_at', 'null');
 
+  url.searchParams.set('include', 'enrollment');
+
+
   applyPassthroughParams(url, passthroughParams);
 
   const params = normalizePagination({
@@ -227,16 +230,28 @@ async function fetchAllGroups({ page, passthroughParams = [] }) {
   
   for (const group of groups) {
   const strategy = await fetchGroupEnrollment(group.id);
+  const enrollmentOpen = group.attributes?.enrollment_open ?? true;
   
+
+
+ if (
+    (strategy === 'request_to_join' || strategy === 'open_signup') &&
+    enrollmentOpen === true
+  ) {
     
-    // Only include if strategy is request_to_join or open_signup
-    if (strategy === 'request_to_join' || strategy === 'open_signup') {
-      filteredGroups.push({
-        ...group,
-        enrollmentStrategy: strategy // Add strategy to response
-      });
-    }
+    filteredGroups.push({
+      ...group,
+      enrollmentStrategy: strategy
+    });
+  } else {
+    const reason = strategy !== 'request_to_join' && strategy !== 'open_signup'
+      ? 'Wrong strategy (' + strategy + ')'
+      : 'Enrollment not open (' + enrollmentOpen + ')';
+   
   }
+}
+
+
 
   return {
     page: params.page,
