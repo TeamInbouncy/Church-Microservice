@@ -220,15 +220,33 @@ async function fetchAllGroups({ page, passthroughParams = [] }) {
     payload?.included ?? []
   );
 
+
+
+ // ✅ NEW: Filter groups by enrollment strategy
+  const filteredGroups = [];
+  
+  for (const group of groups) {
+    const strategy = await fetchGroupEnrollment(group.id);
+    
+    // Only include if strategy is request_to_join or open_signup
+    if (strategy === 'request_to_join' || strategy === 'open_signup') {
+      filteredGroups.push({
+        ...group,
+        enrollmentStrategy: strategy // Add strategy to response
+      });
+    }
+  }
+
   return {
     page: params.page,
     offset: params.offset,
     pageSize: params.perPage,
-    groups,
+    groups: filteredGroups, // Return filtered groups
     links: payload?.links ?? {},
     nextExist: Boolean(payload?.links?.next),
     includes: payload?.included ?? [],
   };
+
 }
 
 
@@ -390,6 +408,25 @@ async function enrichEventsWithGroupDetails(events) {
   });
 }
 
+async function fetchGroupEnrollment(groupId) {
+  const url = `https://api.planningcenteronline.com/groups/v2/groups/${groupId}/enrollment`;
+  
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Basic ${toBasicAuthToken(appId, secret)}`,
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    return null; // Return null if enrollment not found
+  }
+
+  const data = await response.json();
+  return data?.data?.attributes?.strategy || null;
+}
+
+
 function extractGroupId(event) {
   return event?.relationships?.group?.data?.id ?? null;
 }
@@ -412,6 +449,9 @@ async function fetchGroupDetail(groupId) {
 
   return response.json();
 }
+
+
+
 
 function extractGroupImage(detail) {
   const attributes = detail?.data?.attributes ?? {};
