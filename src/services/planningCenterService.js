@@ -224,45 +224,38 @@ async function fetchAllGroups({ page, passthroughParams = [] }) {
   );
 
 
-
- // ✅ NEW: Filter groups by enrollment strategy
+ // ✅ Filter groups by enrollment strategy, enrollment_open, AND auto_closed
   const filteredGroups = [];
   
-  for (const group of groups) {
-  const strategy = await fetchGroupEnrollment(group.id);
+for (const group of groups) {
+  const enrollment = await fetchGroupEnrollment(group.id);
+  const strategy = enrollment.strategy;
+  
+  // ✅ Get auto_closed from merged enrollment data
+  const autoClosed = group.enrollment?.attributes?.auto_closed;
   const enrollmentOpen = group.attributes?.enrollment_open ?? true;
   
-
-
- if (
+  if (
     (strategy === 'request_to_join' || strategy === 'open_signup') &&
-    enrollmentOpen === true
+    enrollmentOpen === true &&
+    autoClosed !== true  // ✅ Now will work!
   ) {
-    
     filteredGroups.push({
       ...group,
       enrollmentStrategy: strategy
     });
-  } else {
-    const reason = strategy !== 'request_to_join' && strategy !== 'open_signup'
-      ? 'Wrong strategy (' + strategy + ')'
-      : 'Enrollment not open (' + enrollmentOpen + ')';
-   
   }
 }
-
-
 
   return {
     page: params.page,
     offset: params.offset,
     pageSize: params.perPage,
-    groups: filteredGroups, // Return filtered groups
+    groups: filteredGroups,
     links: payload?.links ?? {},
     nextExist: Boolean(payload?.links?.next),
     includes: payload?.included ?? [],
   };
-
 }
 
 
@@ -433,13 +426,15 @@ async function fetchGroupEnrollment(groupId) {
       Accept: 'application/json',
     },
   });
-
-  if (!response.ok) {
-    return null; // Return null if enrollment not found
+if (!response.ok) {
+    return { strategy: null, autoClosed: false };
   }
 
-  const data = await response.json();
-  return data?.data?.attributes?.strategy || null;
+const data = await response.json();
+  return {
+    strategy: data?.data?.attributes?.strategy || null,
+    autoClosed: data?.data?.attributes?.auto_closed || false  // ✅ NEW
+  };
 }
 
 
