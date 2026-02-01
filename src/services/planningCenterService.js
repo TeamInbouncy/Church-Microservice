@@ -227,18 +227,14 @@ async function fetchAllGroups({ page, passthroughParams = [] }) {
   
   for (const group of groups) {
   const strategy = await fetchGroupEnrollment(group.id);
-  const enrollmentOpen = group.attributes?.enrollment_open; 
+  
     
     // Only include if strategy is request_to_join or open_signup
-    if (
-    (strategy === 'request_to_join' || strategy === 'open_signup') &&
-    enrollmentOpen === true  // ✅ NEW: Check enrollment_open
-  ) {
-    filteredGroups.push({
-      ...group,
-      enrollmentStrategy: strategy,
-      enrollmentOpen: enrollmentOpen  // ✅ NEW: Add to response (optional)
-    });
+    if (strategy === 'request_to_join' || strategy === 'open_signup') {
+      filteredGroups.push({
+        ...group,
+        enrollmentStrategy: strategy // Add strategy to response
+      });
     }
   }
 
