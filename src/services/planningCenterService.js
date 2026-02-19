@@ -271,6 +271,75 @@ return {
 };
 }
 
+async function fetchRegistrationSignups({ page, passthroughParams = [] }) {
+  const url = new URL(
+    'https://api.planningcenteronline.com/registrations/v2/signups'
+  );
+
+  // Filter only non-archived signups
+  url.searchParams.set('where[archived_on]', 'null');
+  url.searchParams.set('include', 'event');
+
+  applyPassthroughParams(url, passthroughParams);
+
+  const params = normalizePagination({
+    perPageRaw: url.searchParams.get('per_page'),
+    offsetRaw: url.searchParams.get('offset'),
+    page,
+  });
+
+  if (params.perPage !== undefined) {
+    ensureSearchParam(url, 'per_page', String(params.perPage));
+  }
+
+  if (params.offset !== undefined) {
+    ensureSearchParam(url, 'offset', String(params.offset));
+  }
+
+  logRequest({
+    groupTypeId: 'N/A',
+    endpoint: 'registration-signups',
+    page: params.page,
+    perPage: params.perPage,
+    offset: params.offset,
+    url,
+  });
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Basic ${toBasicAuthToken(appId, secret)}`,
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await safeReadText(response);
+    console.error(
+      `Planning Center signups request failed (${response.status}): ${errorText}`
+    );
+    throw new HttpError(
+      `Planning Center request failed with status ${response.status}`,
+      502
+    );
+  }
+
+  const payload = await response.json();
+  
+  // Filter signups to ensure archived_on is null
+  const filteredSignups = (payload?.data ?? []).filter(
+    signup => signup.attributes?.archived_on === null
+  );
+
+  return {
+    page: params.page,
+    offset: params.offset,
+    pageSize: params.perPage,
+    signups: filteredSignups,
+    links: payload?.links ?? {},
+    nextExist: Boolean(payload?.links?.next),
+    includes: payload?.included ?? [],
+  };
+}
 
 
 function toBasicAuthToken(id, password) {
@@ -556,4 +625,4 @@ function mergeIncludedResources(primaryData, included) {
   });
 }
 
-module.exports = { fetchUpcomingEvents, fetchGroupsByGroupType, fetchAllGroups };
+module.exports = { fetchUpcomingEvents, fetchGroupsByGroupType, fetchAllGroups, fetchRegistrationSignups };
