@@ -273,10 +273,10 @@ return {
 
 async function fetchRegistrationSignups({ page, passthroughParams = [] }) {
   const url = new URL(
-    'https://api.planningcenteronline.com/registrations/v2/events'  // ✅ Changed from /signups to /events
+    'https://api.planningcenteronline.com/registrations/v2/signups'
   );
 
-  // ✅ Filter only non-archived events
+  // Filter only non-archived signups
   url.searchParams.set('where[archived_on]', 'null');
   url.searchParams.set('include', 'event');
 
@@ -298,7 +298,7 @@ async function fetchRegistrationSignups({ page, passthroughParams = [] }) {
 
   logRequest({
     groupTypeId: 'N/A',
-    endpoint: 'registration-events',
+    endpoint: 'registration-signups',
     page: params.page,
     perPage: params.perPage,
     offset: params.offset,
@@ -315,7 +315,7 @@ async function fetchRegistrationSignups({ page, passthroughParams = [] }) {
   if (!response.ok) {
     const errorText = await safeReadText(response);
     console.error(
-      `Planning Center events request failed (${response.status}): ${errorText}`
+      `Planning Center signups request failed (${response.status}): ${errorText}`
     );
     throw new HttpError(
       `Planning Center request failed with status ${response.status}`,
@@ -325,25 +325,21 @@ async function fetchRegistrationSignups({ page, passthroughParams = [] }) {
 
   const payload = await response.json();
   
-  // ✅ Extract data array and filter by archived_on: null
-  const allEvents = payload?.data ?? [];
-  const filteredSignups = allEvents.filter(
-    event => event.attributes?.archived_on === null
+  // Filter signups to ensure archived_on is null
+  const filteredSignups = (payload?.data ?? []).filter(
+    signup => signup.attributes?.archived_on === null
   );
-
-  console.log(`Total events: ${allEvents.length}, Filtered (archived_on=null): ${filteredSignups.length}`);
 
   return {
     page: params.page,
     offset: params.offset,
     pageSize: params.perPage,
-    signups: filteredSignups,  // ✅ Return as 'signups' for frontend compatibility
+    signups: filteredSignups,
     links: payload?.links ?? {},
     nextExist: Boolean(payload?.links?.next),
     includes: payload?.included ?? [],
   };
 }
-
 
 
 function toBasicAuthToken(id, password) {
