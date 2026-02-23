@@ -277,7 +277,8 @@ async function fetchRegistrationSignups({ page, passthroughParams = [] }) {
   );
 
   // Filter only non-archived signups
-  url.searchParams.set('where[archived_on]', 'null');
+  // url.searchParams.set('where[archived_on]', 'null');
+  // url.searchParams.set('include', 'event');
   url.searchParams.set('include', 'event');
 
   applyPassthroughParams(url, passthroughParams);
@@ -331,13 +332,13 @@ async function fetchRegistrationSignups({ page, passthroughParams = [] }) {
   );
 
   return {
-    page: params.page,
-    offset: params.offset,
-    pageSize: params.perPage,
-    signups: filteredSignups,
-    links: payload?.links ?? {},
-    nextExist: Boolean(payload?.links?.next),
-    includes: payload?.included ?? [],
+  page: params.page,
+  offset: params.offset,
+  pageSize: params.perPage,
+  signups: filteredSignups,  // ✅ filtered
+  links: payload?.links ?? {},
+  nextExist: Boolean(payload?.links?.next),
+  includes: payload?.included ?? [],
   };
 }
 
