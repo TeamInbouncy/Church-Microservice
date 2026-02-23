@@ -335,7 +335,7 @@ async function fetchRegistrationSignups({ page, passthroughParams = [] }) {
   page: params.page,
   offset: params.offset,
   pageSize: params.perPage,
-  signups: filteredSignups,  // ✅ filtered
+  signups: payload?.data ?? [],        // ✅ payload.data use karo, payload.signups nahi
   links: payload?.links ?? {},
   nextExist: Boolean(payload?.links?.next),
   includes: payload?.included ?? [],
