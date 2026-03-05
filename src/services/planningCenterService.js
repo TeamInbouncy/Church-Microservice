@@ -7,6 +7,7 @@ const {
 } = config;
 
 const STARTS_AT_QUERY_KEY = "where[starts_at][gte]";
+const FEATURED_SIGNUP_CATEGORY_ID = "102158";
 
 async function fetchUpcomingEvents({
   page,
@@ -342,6 +343,72 @@ async function fetchRegistrationSignups({ page, passthroughParams = [] }) {
   };
 }
 
+async function fetchFeaturedRegistrationSignups({
+  page,
+  passthroughParams = [],
+}) {
+  const url = new URL(
+    "https://api.planningcenteronline.com/registrations/v2/signups"
+  );
+
+  url.searchParams.set("include", "event");
+  applyPassthroughParams(url, passthroughParams);
+  url.searchParams.set("where[categories]", FEATURED_SIGNUP_CATEGORY_ID);
+
+  const params = normalizePagination({
+    perPageRaw: url.searchParams.get("per_page"),
+    offsetRaw: url.searchParams.get("offset"),
+    page,
+  });
+
+  if (params.perPage !== undefined) {
+    ensureSearchParam(url, "per_page", String(params.perPage));
+  }
+
+  if (params.offset !== undefined) {
+    ensureSearchParam(url, "offset", String(params.offset));
+  }
+
+  logRequest({
+    groupTypeId: "N/A",
+    endpoint: "featured-registration-signups",
+    page: params.page,
+    perPage: params.perPage,
+    offset: params.offset,
+    url,
+  });
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Basic ${toBasicAuthToken(appId, secret)}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await safeReadText(response);
+    console.error(
+      `Planning Center featured signups request failed (${response.status}): ${errorText}`
+    );
+    throw new HttpError(
+      `Planning Center request failed with status ${response.status}`,
+      502
+    );
+  }
+
+  const payload = await response.json();
+
+  return {
+    page: params.page,
+    offset: params.offset,
+    pageSize: params.perPage,
+    signups: payload?.data ?? [],
+    links: payload?.links ?? {},
+    nextExist: Boolean(payload?.links?.next),
+    includes: payload?.included ?? [],
+  };
+}
+
 
 function toBasicAuthToken(id, password) {
   return Buffer.from(`${id}:${password}`).toString("base64");
@@ -626,4 +693,10 @@ function mergeIncludedResources(primaryData, included) {
   });
 }
 
-module.exports = { fetchUpcomingEvents, fetchGroupsByGroupType, fetchAllGroups, fetchRegistrationSignups };
+module.exports = {
+  fetchUpcomingEvents,
+  fetchGroupsByGroupType,
+  fetchAllGroups,
+  fetchRegistrationSignups,
+  fetchFeaturedRegistrationSignups,
+};
